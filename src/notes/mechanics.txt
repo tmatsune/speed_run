@@ -1,0 +1,3 @@
+
+Main Idea:
+    Celeste style game, with climbing, and dashing 

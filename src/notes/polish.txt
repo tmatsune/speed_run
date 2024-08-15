@@ -1,0 +1,18 @@
+
+player:
+    X squash effect
+    - jump dust effect 
+    - run dust effect 
+    - climbing 
+    - dash effects 
+    - death effect 
+
+world:
+    - lighting 
+    - bg effects (stars or moving objects)
+    - foliage
+    - leaves 
+    - clouds (maybe)
+    - grass 
+
+
