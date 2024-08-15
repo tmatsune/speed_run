@@ -113,6 +113,7 @@ class Player(Entity):
         if self.jumps > 0:
             self.jumps -= 1 
             self.vel[1] = -12
+        
 
     def state_handler(self, collisions):
         if self.state == 'idle':

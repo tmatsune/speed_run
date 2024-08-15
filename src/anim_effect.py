@@ -2,7 +2,7 @@ import pygame as pg
 import math, random
 
 '''
-This code defines an Anim_Effect class that creates a layered animation effect using Pygame. 
+creates a layered animation effect using Pygame. 
 The effect is based on rotating and slightly shifting the layers of an image in a sine wave pattern. 
 The extract_color function is used to create these layers by isolating and manipulating 
 specific colors in the original image. Here's a detailed explanation of how it works:

@@ -113,8 +113,9 @@ class App:
         light_surf = self.display.copy()
         light_surf.fill((125, 125, 125))
 
-    
+        # ----- UPDATE ----- #
         self.total_time += 1
+        self.mouse_pos = pg.mouse.get_pos()
 
         # ------- SCROLL OFFSET ------- #
         self.offset[0] += ( ( self.player.pos[0] - WIDTH // 2 )  - self.offset[0]) / 12
@@ -153,11 +154,13 @@ class App:
         # ----- PLAYER 
         self.player.update(self.dt)
         self.player.render(self.display, self.offset)
+        glow(light_surf, (self.player.pos[0] - self.offset[0] - 200//2, self.player.pos[1] - self.offset[1] - 200//2), 200, false)
 
         # ------------- PARTICLES ------------ #
 
-        # [pos, vel, radius, color, dur]
-        for i, p in enumerate(sorted(self.orbs, reverse=true)):
+        # -------- ORBS
+        # [pos, vel, radius, color]
+        for i, p in enumerate(self.orbs):
             p[0][0] += p[1][0]
             p[0][1] += p[1][1]
             color = (170,240, 250) if p[3] == 'blue' else (255, 240, 2)
@@ -167,11 +170,31 @@ class App:
             radius2 = 20
             glow(light_surf, (int(p[0][0] - self.offset[0] - radius//2) % WIDTH, int(p[0][1] - self.offset[1] - radius//2) % HEIGHT), radius, p[3])
             glow(light_surf, (int(p[0][0] - self.offset[0] - radius2//2) % WIDTH, int(p[0][1] - self.offset[1] - radius2//2) % HEIGHT), radius2, p[3])
-            if p[4] < 1:
-                self.orbs.pop()
         
-        # ---- NOTE TEST 
-        glow(light_surf, (self.player.pos[0] - self.offset[0] - 200//2, self.player.pos[1] - self.offset[1] - 200//2), 200, false)
+        # ------- SPARKS
+
+        if self.left_clicked:
+            self.test_func()
+
+        # [ pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col ]
+        for i, spark, in enumerate(sorted(self.sparks, reverse=true)):
+            spark[0][0] += math.cos(spark[1]) * spark[2]
+            spark[0][1] += math.sin(spark[1]) * spark[2]
+            spark[3] -= spark[4] # sub width by decay 
+            spark[2] *= spark[5] # decrase speed by speed decay 
+            spark[6] *= spark[7] # decrease lenght by mult of lngth decay 
+
+            if spark[3] <= 0:
+                self.sparks.remove(spark)
+                continue
+            points = [
+                (spark[0][0] + math.cos(spark[1]) * spark[6], spark[0][1] + math.sin(spark[1]) * spark[6]),
+                (spark[0][0] + math.cos(spark[1] + math.pi / 2) * spark[3], spark[0][1] + math.sin(spark[1] + math.pi / 2) * spark[3]),
+                (spark[0][0] - math.cos(spark[1]) * spark[6], spark[0][1] - math.sin(spark[1]) * spark[6]),
+                (spark[0][0] + math.cos(spark[1] - math.pi / 2) * spark[3], spark[0][1] + math.sin(spark[1] - math.pi / 2) * spark[3]),
+            ]
+            points = [(p[0] - self.offset[0], p[1] - self.offset[1]) for p in points]
+            pg.draw.polygon(self.display, (247, 237, 186), points)
         
         # ---------- DISPLAY SCREENS ---------- #
 
@@ -207,6 +230,23 @@ class App:
                     random.uniform(.1, .3)
                 ]
                 )
+
+    def test_func(self):
+        ang = math.atan2(self.mouse_pos[1]//2 - self.player.center()[1]-self.offset[1], self.mouse_pos[0]//2 - self.player.center()[0]+self.offset[0])
+        print(self.mouse_pos[1]//2, self.mouse_pos[0]//2)
+        for i in range(3):
+            # offset = random.uniform(-math.pi/6, math.pi/6)
+            spark = [self.player.center(), 
+                     ang, 
+                     random.randrange(8, 11),
+                     random.randrange(3, 5), 
+                     0.2, 
+                     0.9,
+                     random.randrange(10, 12), 
+                     0.97,
+                     None]
+            self.sparks.append(spark)
+        # random.choice([(37,255,60),(37,120,250),(255,37,80),(250,250,50),(150,50,250)])
 
     def update(self):
         self.clock.tick(FPS)
