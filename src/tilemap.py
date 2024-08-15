@@ -16,6 +16,7 @@ decor_congif_id = {
     0: [16, 16],
     1: [32, 32],
 }
+hitable_tilesets = {'tileset_0', 'tileset_1', 'tileset_2'}
 
 top_left = 0
 top_center = 1
@@ -175,7 +176,7 @@ class Tile_Map:
         tile_pos = (int(pos[0] // CELL_SIZE), int(pos[1] // CELL_SIZE))
         if tile_pos in self.tile_map:
             for layer, tile in self.tile_map[tile_pos].items():
-                if tile[1] in ['tileset_0']:
+                if tile[1] in hitable_tilesets:
                     return True
         return False
 

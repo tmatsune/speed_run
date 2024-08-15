@@ -1,5 +1,5 @@
 import pygame as pg 
-import math
+import math, random
 from .entity import Entity 
 from .utils import silhouette
 from .settings import CELL_SIZE
@@ -113,7 +113,42 @@ class Player(Entity):
         if self.jumps > 0:
             self.jumps -= 1 
             self.vel[1] = -12
-        
+        for i in range(2):
+            ang = (5*math.pi)/4 if i < 1 else (7*math.pi)/4
+            pos = [self.pos[0]+2, self.pos[1]+12] if i == 0 else [self.pos[0]+14, self.pos[1]+12]
+            # (7*math.pi)/4
+            # offset = random.uniform(-math.pi/6, math.pi/6)
+            # pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col
+            spark = [
+                     pos, # pos
+                     ang,          # angle
+                     2,            # speed 
+                     2,            # width 
+                     0.3,          # width decay 
+                     0.6,          # speed_decay 
+                     6,            # length
+                     0.88,         # length decay 
+                     None
+                    ]
+            self.app.sparks.append(spark)
+        for i in range(2):
+            ang = (4*math.pi)/3 if i < 1 else (5*math.pi)/3
+            pos = [self.pos[0]+5, self.pos[1] + 8] if i == 0 else [self.pos[0]+11, self.pos[1]+8]
+            # (7*math.pi)/4
+            # offset = random.uniform(-math.pi/6, math.pi/6)
+            # pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col
+            spark = [
+                pos,  # pos
+                ang,          # angle
+                2,            # speed
+                2,            # width
+                0.3,          # width decay
+                0.6,          # speed_decay
+                6,            # length
+                0.88,         # length decay
+                None
+            ]
+            self.app.sparks.append(spark)
 
     def state_handler(self, collisions):
         if self.state == 'idle':

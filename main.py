@@ -77,6 +77,7 @@ class App:
         self.sparks = []
         self.orbs = []
         self.bg_effects = []
+        self.paints = []
 
         # -------- DATA INIT
         self.asset_manager = Asset_Manager()
@@ -172,7 +173,6 @@ class App:
             glow(light_surf, (int(p[0][0] - self.offset[0] - radius2//2) % WIDTH, int(p[0][1] - self.offset[1] - radius2//2) % HEIGHT), radius2, p[3])
         
         # ------- SPARKS
-
         if self.left_clicked:
             self.test_func()
 
@@ -195,7 +195,91 @@ class App:
             ]
             points = [(p[0] - self.offset[0], p[1] - self.offset[1]) for p in points]
             pg.draw.polygon(self.display, (247, 237, 186), points)
-        
+
+        # ------- PAINT
+        if self.left_clicked:
+            self.test_func()
+                # [ pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col ]
+        for i, spark, in enumerate(sorted(self.paints, reverse=true)):
+            spark[0][0] += math.cos(spark[1]) * spark[2]
+            spark[0][1] += math.sin(spark[1]) * spark[2]
+            spark[3] -= spark[4] # sub width by decay 
+            spark[2] *= spark[5] # decrase speed by speed decay 
+            spark[6] *= spark[7] # decrease lenght by mult of lngth decay 
+
+            if spark[1] > -math.pi/2 and spark[1] < 1.2:
+                spark[1] += .1
+            elif (spark[1] < -math.pi/2 and spark[1] > -4) or (spark[1] > 1.9):
+                spark[1] -= .1
+            color = (247, 237, 186) if not spark[8] else spark[8]
+
+            if self.tile_map.tile_collide(spark[0].copy()):
+                for i in range(3):
+                    color = color
+                    particle = ['paint', spark[0].copy(), [random.random() * 6 - 3, random.random() * 6 - 3], color, random.randrange(2, 3), random.uniform(.02, .06), 0]
+                    #particle = ['fire', spark[0].copy(), [random.random() - .5, random.randrange(-4, -1)], (10, 0, 0), random.randrange(2, 3), random.uniform(.12, .18), 0]
+                    self.circle_particles.append(particle)
+                self.paints.remove(spark)
+                continue
+
+            if spark[3] <= 0:
+                self.paints.remove(spark)
+                continue
+            points = [
+                (spark[0][0] + math.cos(spark[1]) * spark[6]*.5, spark[0][1] + math.sin(spark[1]) * spark[6]*.5),
+                (spark[0][0] + math.cos(spark[1] + math.pi / 2) * spark[3], spark[0][1] + math.sin(spark[1] + math.pi / 2) * spark[3]),
+                (spark[0][0] - math.cos(spark[1]) * spark[6], spark[0][1] - math.sin(spark[1]) * spark[6]),
+                (spark[0][0] + math.cos(spark[1] - math.pi / 2) * spark[3], spark[0][1] + math.sin(spark[1] - math.pi / 2) * spark[3]),
+            ]
+            points = [(p[0] - self.offset[0], p[1] - self.offset[1]) for p in points]
+            pg.draw.polygon(self.display, color, points)
+
+        # [ type, pos, vel, color, size, decay, dur ]
+        for p in self.circle_particles.copy():
+            if p[0] == 'paint' or p[0] == 'fire_ball':
+                p[1][0] += p[2][0]
+                if self.tile_map.tile_collide(p[1]):
+                    p[1][0] -= p[2][0]
+                    p[2][0] *= -0.7
+                p[1][1] += p[2][1]
+                if self.tile_map.tile_collide((p[1][0], p[1][1])):
+                    p[1][1] -= p[2][1]
+                    p[2][1] *= -0.7
+                p[2][1] += .2  # gravity
+
+            if p[0] == 'fire':
+                p[1][0] += p[2][0]
+                p[1][1] += p[2][1]
+
+                if p[6] < 0.2:
+                    p[4] += p[5]
+                if p[6] < 0.4:
+                    p[3] = (245, 237, 186)
+                elif p[6] < 0.6:
+                    p[3] = (228, 148, 58)
+                elif p[6] < 0.9:
+                    p[3] = (157, 48, 59)
+                elif p[6] < 0.14:
+                    p[3] = (62, 33, 55)
+                else:
+                    p[3] = (31, 14, 28)
+
+                p[6] += p[5]
+
+            if p[0] == 'fire_ball':
+                particle = ['fire', p[1].copy(), [random.random() - .5, random.randrange(-4, -1)],
+                            (10, 0, 0), random.randrange(6, 8), random.uniform(.12, .18), 0]
+                self.circle_particles.append(particle)
+
+            p[4] -= p[5]
+
+            if p[4] < 1:
+                self.circle_particles.remove(p)
+            else:
+                pg.draw.circle(
+                    self.display, p[3], (p[1][0] - self.offset[0], p[1][1] - self.offset[1]), p[4])
+
+
         # ---------- DISPLAY SCREENS ---------- #
 
         screenshake_offset = [0, 0]
@@ -232,21 +316,22 @@ class App:
                 )
 
     def test_func(self):
+        # [ pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col ]
         ang = math.atan2(self.mouse_pos[1]//2 - self.player.center()[1]-self.offset[1], self.mouse_pos[0]//2 - self.player.center()[0]+self.offset[0])
-        print(self.mouse_pos[1]//2, self.mouse_pos[0]//2)
         for i in range(3):
             # offset = random.uniform(-math.pi/6, math.pi/6)
-            spark = [self.player.center(), 
+            paint = [self.player.center(), 
                      ang, 
                      random.randrange(8, 11),
                      random.randrange(3, 5), 
-                     0.2, 
+                     .2,  # .2
                      0.9,
                      random.randrange(10, 12), 
-                     0.97,
-                     None]
-            self.sparks.append(spark)
+                     0.90,
+                     random.choice([(37, 255, 60), (37, 120, 250), (255, 37, 80), (250, 250, 50), (150, 50, 250)])]
+            self.paints.append(paint)
         # random.choice([(37,255,60),(37,120,250),(255,37,80),(250,250,50),(150,50,250)])
+
 
     def update(self):
         self.clock.tick(FPS)
