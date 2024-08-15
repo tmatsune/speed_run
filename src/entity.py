@@ -59,14 +59,12 @@ class Entity:
         self.pos[0] += vel[0]
         hitable_tiles = self.get_tile_hits(self.rect(), tiles)
         curr_rect = self.rect()
-        pg.draw.rect(self.app.display, (255, 0, 0), (self.pos[0] - self.app.offset[0], self.pos[1]- self.app.offset[1] ,CELL_SIZE, CELL_SIZE),1)
         directions = {'left': False, 'right': False, 'up': False, 'down': False}
 
         for tile in hitable_tiles:
             if vel[0] > 0:
                 curr_rect.right = tile.left
                 self.pos[0] = curr_rect.left
-                #pg.draw.rect(self.app.display, (255, 0, 0), (curr_rect.left - self.app.offset[0], curr_rect.top - self.app.offset[1] ,CELL_SIZE, CELL_SIZE),1)
                 directions['right'] = True
             elif vel[0] < 0:
                 curr_rect.left = tile.right

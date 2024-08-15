@@ -7,6 +7,7 @@ from src.tilemap import Tile_Map, decor_congif_id
 from src.entities import Player
 from src.asset_manager import *
 from src.particles import * 
+from src.anim_effect import Anim_Effect
 
 false = False
 true = True
@@ -14,6 +15,7 @@ NULL = None
 inf = float('inf')
 n_inf = float('-inf')
 
+    
 light_mask_base = load_img(f'{IMG_PATH}lights/light.png')
 light_mask_base_yellow = light_mask_base.copy()
 light_mask_base_yellow.fill((255, 240, 1))  # (1, 196, 248)
@@ -59,7 +61,7 @@ class App:
         self.left_clicked = false 
         self.right_clicked = false 
         self.inputs = [false, false, false, false]
-        self.bg = get_image(f'{IMG_PATH}bg.png', [WIDTH, HEIGHT])
+        self.bg = get_image(f'{IMG_PATH}bg/bg.png', [WIDTH, HEIGHT])
         self.bg_2 = self.bg.copy()
         self.bg_pos = [0,0]
         self.bg_2_pos = [WIDTH,0]
@@ -83,6 +85,8 @@ class App:
         self.load_map(1)
         self.test_init_func()
         load_stars(PARTS_PATH+'stars')
+        load_bg_images(IMG_PATH+'bg/star')
+        self.tree_animations = [Anim_Effect(load_img(f'{TILESET_PATH}decor/' + str(i) + '.png'), [[38, 92, 66], [62, 137, 72], [99, 199, 77]], motion_scale=0.5) for i in range(2)]
 
     def load_map(self, map_name):
         self.player = Player(self, [100,100], [CELL_SIZE, CELL_SIZE], 'player', True)
@@ -105,7 +109,7 @@ class App:
     def render(self):
 
         # ----- SCREEN SETUP ----- #
-        self.display.fill((12, 10, 18))
+        self.display.fill((12, 10, 22))
         light_surf = self.display.copy()
         light_surf.fill((125, 125, 125))
 
@@ -126,18 +130,12 @@ class App:
             self.offset[1] = self.edges[3] - HEIGHT
 
         # --------- BACKGROUND EFFECTS --------- #
-        # [pos, vel, type]
+        # [pos, vel, image_id, rate]
         for i, eff in enumerate(self.bg_effects):
-            #eff[0][0] += eff[1][0]
-            #eff[0][1] += eff[1][1]
-
-            sine_offset = math.sin(eff[0][0] * 0.04) * .8  # Adjust 0.05 and 10 for frequency and amplitude
-            eff[0][1] += 1
-
-            img = star_images[eff[2]]
-            self.display.blit(
-                img, ((eff[0][0] - self.offset[0]) % WIDTH, (eff[0][1] - self.offset[1]) % HEIGHT))
-            #glow(light_surf, (int(eff[0][0] - self.offset[0] - 20//2) % WIDTH, int(eff[0][1] - self.offset[1] - 20//2) % HEIGHT),20, 'blue')
+            img = bg_star_images[int(eff[2])]
+            eff[2] += eff[3]
+            if eff[2] >= len(bg_star_images): eff[2] = 0 
+            self.display.blit(img, ((eff[0][0] - self.offset[0]) % WIDTH, (eff[0][1] - self.offset[1]) % HEIGHT))
 
         # --------- MAIN RENDER ACTIONS ---------- #
 
@@ -147,11 +145,12 @@ class App:
                 real_pos = [tile[0][0] * CELL_SIZE, tile[0][1] * CELL_SIZE]
                 img = tile[4]
                 if tile[2] == 'decor':
-                    img = scale_image(tile[4], decor_congif_id[tile[3]])
-
-                self.display.blit(img, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]))
+                    #img = scale_image(tile[4], decor_congif_id[tile[3]])
+                    self.tree_animations[1].render(self.display, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]-16), m_clock=self.total_time / 100, seed=251228987)
+                else:
+                    self.display.blit(img, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]))
     
-        
+        # ----- PLAYER 
         self.player.update(self.dt)
         self.player.render(self.display, self.offset)
 
@@ -199,12 +198,13 @@ class App:
                               inf
                               ])
 
-        for i in range(10):
+        for i in range(18):
             self.bg_effects.append(
                 [
-                    [i * random.randrange(14,18), random.randrange(50,160)],
+                    [random.randrange(0,WIDTH), random.randrange(HEIGHT//4, HEIGHT-HEIGHT//4)],
                     [random.uniform(.6,1.2),1],
-                    random.choice([0,1])
+                    random.choice([0,len(bg_star_images)-1]),
+                    random.uniform(.1, .3)
                 ]
                 )
 

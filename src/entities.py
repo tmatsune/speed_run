@@ -87,6 +87,7 @@ class Player(Entity):
             offset[1] -= y_diff 
         if self.flip:
             img = pg.transform.flip(img, self.flip, false)
+    
         surf.blit(img, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
         self.mask = pg.mask.from_surface(img)
         if self.state == 'hurt':

@@ -2,8 +2,8 @@ import os
 from .settings import * 
 from .utils import * 
 
-global bg_effects_images, star_images
-bg_effects_images = []
+global bg_star_images, star_images
+bg_star_images = []
 star_images = {}
 
 
@@ -21,6 +21,13 @@ def particle_file_sort(l):
 def load_background_effects(path):
     global bg_effects_images
     colors = [(0,99,190), ()]
+
+def load_bg_images(path):
+    global bg_star_images
+    image_list = os.listdir(path)
+    image_list.sort()
+    for img in image_list:
+        bg_star_images.append(get_image(path + f'/{img}',[CELL_SIZE//1.4, CELL_SIZE//1.4]))
 
 def load_stars(path):
     global star_images
