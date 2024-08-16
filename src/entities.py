@@ -34,7 +34,7 @@ class Player(Entity):
     def update(self, dt):
         super().update(dt)
 
-        self.inputs = self.app.inputs.copy()
+        self.inputs = [false, false, false, false]#self.app.inputs.copy()
 
         if self.inputs[0]:
             self.flip = true
@@ -53,7 +53,7 @@ class Player(Entity):
             self.just_hit = false
             speed_x = 1.2 if self.flip else -1.2
 
-        self.apply_force(speed_x * self.speed * self.force_scalar)
+        self.apply_force([speed_x * self.speed * self.force_scalar, 0])
         self.add_friction()
         self.vel[1] = min(14, self.vel[1]+1)
 
@@ -102,9 +102,6 @@ class Player(Entity):
         '''
         surf.blit(img, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
 
-        center = self.center()
-        pg.draw.circle(surf, (255,255,0), (center[0] - offset[0], center[1] - offset[1]), 2)
-
         self.mask = pg.mask.from_surface(img)
         if self.state == 'hurt':
             if math.sin(self.data.total_time) > 0:
@@ -121,9 +118,12 @@ class Player(Entity):
             self.vel[0] = 0 
     
     def apply_force(self, force):
-        self.vel[0] += force
+        self.vel[0] += force[0]
+        self.vel[1] += force[1]
         if self.vel[0] > 4.5: self.vel[0] = min(4.5, self.vel[0])
-        if self.vel[0] < 4.5: self.vel[0] = max(-4.5, self.vel[0])
+        if self.vel[0] < -4.5: self.vel[0] = max(-4.5, self.vel[0])
+        
+        if self.vel[1] < -6: self.vel[1] = max(-6, self.vel[1])
 
     def jump(self):
         if self.jumps > 0:

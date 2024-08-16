@@ -337,7 +337,10 @@ class App:
                      0.90,
                      random.choice([(37, 255, 60), (37, 120, 250), (255, 37, 80), (250, 250, 50), (150, 50, 250)])]
             self.paints.append(paint)
-        # random.choice([(37,255,60),(37,120,250),(255,37,80),(250,250,50),(150,50,250)])
+        
+        print(   (self.player.center()[1]+self.offset[1]) , self.mouse_pos[1]//2, (self.player.center()[0]+self.offset[0]) , self.mouse_pos[0]//2     )
+        player_ang = math.atan2((self.player.center()[1]-self.offset[1]) - self.mouse_pos[1]//2, (self.player.center()[0]-self.offset[0]) - self.mouse_pos[0]//2)
+        self.player.apply_force([math.cos(player_ang),math.sin(player_ang)])
 
 
     def update(self):
