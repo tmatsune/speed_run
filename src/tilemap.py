@@ -3,6 +3,8 @@ import os, sys, json, copy
 from enum import Enum
 from .settings import *
 from .utils import *
+from .grass_manger import * 
+
 false = False
 true = True
 
@@ -80,8 +82,9 @@ OBJ_TILE_PATH = 'src/assets/tiles/objects/'
 '''
 
 class Tile_Map:
-    def __init__(self, app) -> None:
+    def __init__(self, app, grass_manager) -> None:
         self.app = app
+        self.grass_manager = grass_manager
         self.tile_map = {}
         self.unhitable_tiles = {}
         self.enemies = []
@@ -125,6 +128,10 @@ class Tile_Map:
             for layer, tile in layers.items():
                 if tile[0] == 'objects':
                     print('object: ', tile)
+                elif tile[1] == 'tileset_2' and tile[2] < 3:
+                    tile[3] = get_image(tile[3], [CELL_SIZE, CELL_SIZE])
+                    tile.append(Grass_Tile(self.grass_manager, [key[0], key[1]-1]))
+                    res_data[key][layer] = tile
                 else:
                     if tile[1] == 'decor':
                         if tile[2] == 2:

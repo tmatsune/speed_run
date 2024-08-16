@@ -29,6 +29,7 @@ class Player(Entity):
         self.flip = false 
         self.jumps = MAX_JUMPS
         self.squish_velocity = 0
+        self.angle = 0 
 
     def update(self, dt):
         super().update(dt)
@@ -85,10 +86,25 @@ class Player(Entity):
             y_diff = (CELL_SIZE - img.get_height()) 
             offset[0] -= x_diff
             offset[1] -= y_diff 
+            
         if self.flip:
             img = pg.transform.flip(img, self.flip, false)
-    
+        '''
+        # ---- rotate around axis --- #
+        self.angle += 6
+        pivot = self.center()
+        rot_offset = pg.math.Vector2(CELL_SIZE//8, CELL_SIZE//2)
+        flipped_image = pg.transform.flip(img, false, true)
+        rotated_image = pg.transform.rotozoom(flipped_image, -self.angle, 1)
+        rotated_offset = rot_offset.rotate(self.angle)
+        rect = rotated_image.get_rect(center=pivot+rotated_offset)
+        surf.blit(rotated_image, (rect.x - offset[0], rect.y - offset[1]))
+        '''
         surf.blit(img, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
+
+        center = self.center()
+        pg.draw.circle(surf, (255,255,0), (center[0] - offset[0], center[1] - offset[1]), 2)
+
         self.mask = pg.mask.from_surface(img)
         if self.state == 'hurt':
             if math.sin(self.data.total_time) > 0:
@@ -116,9 +132,6 @@ class Player(Entity):
         for i in range(2):
             ang = (5*math.pi)/4 if i < 1 else (7*math.pi)/4
             pos = [self.pos[0]+2, self.pos[1]+12] if i == 0 else [self.pos[0]+14, self.pos[1]+12]
-            # (7*math.pi)/4
-            # offset = random.uniform(-math.pi/6, math.pi/6)
-            # pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col
             spark = [
                      pos, # pos
                      ang,          # angle
@@ -134,9 +147,6 @@ class Player(Entity):
         for i in range(2):
             ang = (4*math.pi)/3 if i < 1 else (5*math.pi)/3
             pos = [self.pos[0]+5, self.pos[1] + 8] if i == 0 else [self.pos[0]+11, self.pos[1]+8]
-            # (7*math.pi)/4
-            # offset = random.uniform(-math.pi/6, math.pi/6)
-            # pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col
             spark = [
                 pos,  # pos
                 ang,          # angle

@@ -8,6 +8,7 @@ from src.entities import Player
 from src.asset_manager import *
 from src.particles import * 
 from src.anim_effect import Anim_Effect
+from src.grass_manger import * 
 
 false = False
 true = True
@@ -80,14 +81,16 @@ class App:
         self.paints = []
 
         # -------- DATA INIT
+        self.grass_manager = Grass_Manager(self)
         self.asset_manager = Asset_Manager()
-        self.tile_map = Tile_Map(self)
+        self.tile_map = Tile_Map(self, self.grass_manager)
         self.player = None
         self.load_map(1)
         self.test_init_func()
         load_stars(PARTS_PATH+'stars')
         load_bg_images(IMG_PATH+'bg/star')
         self.tree_animations = [Anim_Effect(load_img(f'{TILESET_PATH}decor/' + str(i) + '.png'), [[38, 92, 66], [62, 137, 72], [99, 199, 77]], motion_scale=0.5) for i in range(2)]
+
 
     def load_map(self, map_name):
         self.player = Player(self, [100,100], [CELL_SIZE, CELL_SIZE], 'player', True)
@@ -149,6 +152,10 @@ class App:
                 if tile[2] == 'decor':
                     #img = scale_image(tile[4], decor_congif_id[tile[3]])
                     self.tree_animations[1].render(self.display, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]-16), m_clock=self.total_time / 100, seed=251228987)
+                elif tile[2] == 'tileset_2' and tile[3] < 3:
+                    tile[5].render(self.display, int(math.sin(tile[0][1] / 100 + self.total_time / 20) * 30) / 10,self.offset)
+                    #tile[5].update(int(math.sin(tile[0][0] / 100 + self.total_time / 40) * 30) / 10)
+                    self.display.blit(img, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]))
                 else:
                     self.display.blit(img, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]))
     
