@@ -158,7 +158,7 @@ class Tile_Map:
             for k, obj in map_data['objects'].items():
                 key = str_to_tuple(k)
                 obj[3] = get_image(obj[3], [CELL_SIZE, CELL_SIZE])
-                if obj[1] in ['spikes_0']:
+                if obj[1] in ['spikes_0', 'target']:
                     obj.append(pg.mask.from_surface(obj[3]))
                 objects[key] = obj
 

@@ -1,5 +1,6 @@
 import pygame as pg
 import sys, random, math 
+from enum import Enum
 from pygame.locals import *
 from src.settings import * 
 from src.utils import * 
@@ -16,7 +17,13 @@ NULL = None
 inf = float('inf')
 n_inf = float('-inf')
 
-    
+class State(Enum):
+    START = 0 
+    RUN = 1 
+    PAUSE = 2 
+    DEAD = 3 
+    TRANSIT = 4 
+
 light_mask_base = load_img(f'{IMG_PATH}lights/light.png')
 light_mask_base_yellow = light_mask_base.copy()
 light_mask_base_yellow.fill((255, 240, 1))  # (1, 196, 248)
@@ -39,13 +46,10 @@ for radius in range(1, 150):
     light_masks_blue.append(pg.transform.scale(light_mask_base_blue, (radius, radius)))
 
 def glow(surf, pos, radius, color=False):
-    if not color:
-        glow_img = light_masks[radius - 1]
+    if not color: glow_img = light_masks[radius - 1]
     else:
-        if color == 'blue':
-            glow_img = light_masks_blue[radius - 1]
-        elif color == 'indigo':
-            glow_img = light_masks_yellow[radius - 1]
+        if color == 'blue': glow_img = light_masks_blue[radius - 1]
+        elif color == 'indigo': glow_img = light_masks_yellow[radius - 1]
     surf.blit(glow_img, (pos[0], pos[1]), special_flags=BLEND_RGBA_ADD)
 
 class App:
@@ -71,6 +75,10 @@ class App:
         self.offset = [0,0]
         self.edges = [inf, n_inf, inf, n_inf]  # x, -x, y, -y
 
+        # ------- GAME MAIN DATA 
+        self.state = State.RUN
+        self.level = 2
+
         # -------- PARTICLES 
         self.particles = []
         self.circles = []
@@ -85,7 +93,7 @@ class App:
         self.asset_manager = Asset_Manager()
         self.tile_map = Tile_Map(self, self.grass_manager)
         self.player = None
-        self.load_map(2)
+        self.load_map(self.level)
         self.test_init_func()
         load_stars(PARTS_PATH+'stars')
         load_bg_images(IMG_PATH+'bg/star')
@@ -94,7 +102,7 @@ class App:
 
 
     def load_map(self, map_name):
-        self.player = Player(self, [100,100], [CELL_SIZE, CELL_SIZE], 'player', True)
+        self.player = Player(self, [50,100], [CELL_SIZE, CELL_SIZE], 'player', True)
         self.tile_map.load_map(map_name)
         self.edges = [inf, n_inf, inf, n_inf]
 
@@ -107,9 +115,9 @@ class App:
             if x > self.edges[1]:
                 self.edges[1] = x + CELL_SIZE
             if y < self.edges[2]:
-                self.edges[2] = y 
+                self.edges[2] = y + CELL_SIZE*2
             if y > self.edges[3]:
-                self.edges[3] = y + CELL_SIZE*2
+                self.edges[3] = y + CELL_SIZE
 
     def render(self):
 
@@ -151,14 +159,10 @@ class App:
                 real_pos = [tile[0][0] * CELL_SIZE, tile[0][1] * CELL_SIZE]
                 img = tile[4]
                 if tile[2] == 'decor':
-                    #img = scale_image(tile[4], decor_congif_id[tile[3]])
                     self.tree_animations[1].render(self.display, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]-16), m_clock=self.total_time / 100, seed=251228987)
                 elif tile[2] == 'tileset_2' and tile[3] < 3:
                     tile[5].render(self.display, int(math.sin(tile[0][1] / 100 + self.total_time / 20) * 30) / 10,self.offset)
-                    #tile[5].update(int(math.sin(tile[0][0] / 100 + self.total_time / 40) * 30) / 10)
                     self.display.blit(img, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]))
-                elif tile[2] == 'spikes_0':
-                    pass
                 else:
                     self.display.blit(img, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]))
         for obj in objects:
@@ -167,14 +171,20 @@ class App:
             real_pos = [pos[0] * CELL_SIZE, pos[1] * CELL_SIZE]
             self.display.blit(img, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]))
             if mask_collision(obj[5], real_pos, self.player.mask, self.player.pos.copy()):
-                print('hit')
-
+                if obj[2] == 'target':
+                    if self.state == State.RUN:
+                        self.change_state(State.TRANSIT)
+                else:
+                    self.player.hit()
 
         # ----- PLAYER 
-        self.player.update(self.dt)
+        if self.game_on(): self.player.update(self.dt)
         self.player.render(self.display, self.offset)
         glow(light_surf, (self.player.pos[0] - self.offset[0] - 200//2, self.player.pos[1] - self.offset[1] - 200//2), 200, false)
-
+        if self.player.pos[1] > self.edges[3]:
+            self.player.dead = true 
+        if self.player.dead:
+            self.change_state(State.DEAD)
         # ------------- PARTICLES ------------ #
 
         # -------- ORBS
@@ -191,7 +201,6 @@ class App:
             glow(light_surf, (int(p[0][0] - self.offset[0] - radius2//2) % WIDTH, int(p[0][1] - self.offset[1] - radius2//2) % HEIGHT), radius2, p[3])
         
         # ------- SPARKS
-
         # [ pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col ]
         for i, spark, in enumerate(sorted(self.sparks, reverse=true)):
             spark[0][0] += math.cos(spark[1]) * spark[2]
@@ -264,6 +273,7 @@ class App:
             points = [(p[0] - self.offset[0], p[1] - self.offset[1]) for p in points]
             pg.draw.polygon(self.display, color, points)
 
+        # ------ CIRCLE_PARTICLES
         # [ type, pos, vel, color, size, decay, dur ]
         for p in self.circle_particles.copy():
             if p[0] == 'paint' or p[0] == 'fire_ball':
@@ -308,7 +318,33 @@ class App:
             else:
                 pg.draw.circle(
                     self.display, p[3], (p[1][0] - self.offset[0], p[1][1] - self.offset[1]), p[4])
+                
+        # -------- CIRCLES
+        for circle in self.circles.copy():
+            pg.draw.circle(self.display, circle[6],
+                           (circle[0][0] - self.offset[0], circle[0][1] - self.offset[1]), int(circle[2]), int(circle[3]))
+            circle[2] += circle[1]
+            circle[3] *= circle[4]
+            circle[2] -= circle[5]
+            if circle[3] < 1:
+                self.circles.remove(circle)
 
+        # ------------------ STATE HANDLER ------------------- # 
+        if self.state == State.RUN:
+            if self.player.dead:
+                self.state = State.DEAD
+            if self.level == 0:
+                pass
+        elif self.state == State.TRANSIT:
+            pass
+        elif self.state == State.DEAD:
+            print('dead')
+        elif self.state == State.PAUSE:
+            pass
+        elif self.state == State.START:
+            pass
+        else:
+            assert 0, f'ERROR STATE NOT FOUND {self.state}'
 
         # ---------- DISPLAY SCREENS ---------- #
 
@@ -325,6 +361,14 @@ class App:
 
         pg.display.flip()
         pg.display.update()
+
+    # ------------------- GAME FUNCS -------------------- #
+    def game_on(self):
+        return self.state == State.RUN
+    
+    def change_state(self, state):
+        if self.state != state:
+            self.state = state
 
     def test_init_func(self):
         for i in range(22):
@@ -388,6 +432,11 @@ class App:
                     self.player.jump()
                 if e.key == pg.K_s:
                     pass
+                if e.key == pg.K_p:
+                    if self.state == State.PAUSE:
+                        self.state = State.RUN
+                    else:
+                        self.state = State.PAUSE
 
             if e.type == pg.KEYUP:
                 if e.key == pg.K_a:

@@ -90,8 +90,6 @@ def text_3d(text, size, italic, rgb0, rgb1, offset, font_path=None, bold=True):
     return text_surf
 
 
-
-
 '''
 paralax
  self.display.blit(self.bg_2, (self.bg_2_pos[0], 0))
@@ -101,5 +99,14 @@ paralax
         if self.bg_pos[0] == -WIDTH: self.bg_pos[0] = WIDTH
         if self.bg_2_pos[0] == -WIDTH: self.bg_2_pos[0] = WIDTH
 
+# ---- rotate around axis --- #
+self.angle += 6
+pivot = self.center()
+rot_offset = pg.math.Vector2(CELL_SIZE//8, CELL_SIZE//2)
+flipped_image = pg.transform.flip(img, false, true)
+rotated_image = pg.transform.rotozoom(flipped_image, -self.angle, 1)
+rotated_offset = rot_offset.rotate(self.angle)
+rect = rotated_image.get_rect(center=pivot+rotated_offset)
+surf.blit(rotated_image, (rect.x - offset[0], rect.y - offset[1]))    
 
 '''

@@ -9,6 +9,7 @@ true = True
 
 FORCE_SCALAR_DECAY = .2
 MAX_JUMPS = 2
+HURT_TIME = 1
 
 class Player(Entity):
     def __init__(self, app, pos, size, type, animated=False) -> None:
@@ -33,6 +34,8 @@ class Player(Entity):
         self.squish_velocity = 0
         self.angle = 0 
         self.paint = 100
+        self.hurt_timer = HURT_TIME
+        self.dead = false 
 
     def update(self, dt):
         super().update(dt)
@@ -56,7 +59,7 @@ class Player(Entity):
             self.just_hit = false
             speed_x = 1.2 if self.flip else -1.2
 
-        self.apply_force([speed_x * self.speed * self.force_scalar, 0])
+        #self.apply_force([speed_x * self.speed * self.force_scalar, 0])
         self.add_friction()
         self.vel[1] = min(10, self.vel[1]+1)
 
@@ -92,24 +95,19 @@ class Player(Entity):
             
         if self.flip:
             img = pg.transform.flip(img, self.flip, false)
-        '''
-        # ---- rotate around axis --- #
-        self.angle += 6
-        pivot = self.center()
-        rot_offset = pg.math.Vector2(CELL_SIZE//8, CELL_SIZE//2)
-        flipped_image = pg.transform.flip(img, false, true)
-        rotated_image = pg.transform.rotozoom(flipped_image, -self.angle, 1)
-        rotated_offset = rot_offset.rotate(self.angle)
-        rect = rotated_image.get_rect(center=pivot+rotated_offset)
-        surf.blit(rotated_image, (rect.x - offset[0], rect.y - offset[1]))
-        '''
-        surf.blit(img, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
+
+        if not self.dead:
+            surf.blit(img, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
 
         self.mask = pg.mask.from_surface(img)
         if self.state == 'hurt':
             if math.sin(self.data.total_time) > 0:
                 sil = silhouette(img)
                 surf.blit(sil, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
+
+    def hit(self):
+        if not self.dead:
+            self.dead = true 
                 
     def add_friction(self):
         if self.vel[0] > 0:
@@ -178,7 +176,6 @@ class Player(Entity):
             if collisions['down']:
                 self.change_state('idle')
 
-
     def squash_effect(self, collisions):
         self.scale[1] += self.squish_velocity               # increase y scale
         self.scale[1] = max(0.3, min(self.scale[1], 1.5))   # get max y scale
@@ -202,3 +199,4 @@ class Player(Entity):
         if collisions['down']:
             if self.vel[1] > 6:
                 self.squish_velocity = -0.14
+    
