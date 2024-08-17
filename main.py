@@ -85,11 +85,12 @@ class App:
         self.asset_manager = Asset_Manager()
         self.tile_map = Tile_Map(self, self.grass_manager)
         self.player = None
-        self.load_map(1)
+        self.load_map(2)
         self.test_init_func()
         load_stars(PARTS_PATH+'stars')
         load_bg_images(IMG_PATH+'bg/star')
-        self.tree_animations = [Anim_Effect(load_img(f'{TILESET_PATH}decor/' + str(i) + '.png'), [[38, 92, 66], [62, 137, 72], [99, 199, 77]], motion_scale=0.5) for i in range(2)]
+        self.tree_animations = [Anim_Effect(load_img(f'{TILESET_PATH}decor/' + str(i) + '.png'), [
+                                            [152, 107, 255], [202, 159, 255], [222, 189, 255]], motion_scale=0.5) for i in range(2)]
 
 
     def load_map(self, map_name):
@@ -180,8 +181,6 @@ class App:
             glow(light_surf, (int(p[0][0] - self.offset[0] - radius2//2) % WIDTH, int(p[0][1] - self.offset[1] - radius2//2) % HEIGHT), radius2, p[3])
         
         # ------- SPARKS
-        if self.left_clicked:
-            self.test_func()
 
         # [ pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col ]
         for i, spark, in enumerate(sorted(self.sparks, reverse=true)):
@@ -205,8 +204,22 @@ class App:
 
         # ------- PAINT
         if self.left_clicked:
-            self.test_func()
-                # [ pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col ]
+            if self.player.paint > 0:
+                if self.player.paint > 80:
+                    self.add_paint(4, 3)
+                    self.player.paint -= 1
+                elif self.player.paint > 50:
+                    self.add_paint(3, 3)
+                    self.player.paint -= 1
+                elif self.player.paint > 10:
+                    self.add_paint(2, 2)
+                    self.player.paint = max(0, self.player.paint - 1)
+                else:
+                    self.add_paint(1, .6)
+        else:
+            self.player.paint = min(100, self.player.paint + 1)
+
+        # [ pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col ]
         for i, spark, in enumerate(sorted(self.paints, reverse=true)):
             spark[0][0] += math.cos(spark[1]) * spark[2]
             spark[0][1] += math.sin(spark[1]) * spark[2]
@@ -322,10 +335,10 @@ class App:
                 ]
                 )
 
-    def test_func(self):
+    def add_paint(self, amount, scalar):
         # [ pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col ]
         ang = math.atan2(self.mouse_pos[1]//2 - self.player.center()[1]-self.offset[1], self.mouse_pos[0]//2 - self.player.center()[0]+self.offset[0])
-        for i in range(3):
+        for i in range(amount):
             # offset = random.uniform(-math.pi/6, math.pi/6)
             paint = [self.player.center(), 
                      ang, 
@@ -337,11 +350,8 @@ class App:
                      0.90,
                      random.choice([(37, 255, 60), (37, 120, 250), (255, 37, 80), (250, 250, 50), (150, 50, 250)])]
             self.paints.append(paint)
-        
-        print(   (self.player.center()[1]+self.offset[1]) , self.mouse_pos[1]//2, (self.player.center()[0]+self.offset[0]) , self.mouse_pos[0]//2     )
         player_ang = math.atan2((self.player.center()[1]-self.offset[1]) - self.mouse_pos[1]//2, (self.player.center()[0]-self.offset[0]) - self.mouse_pos[0]//2)
-        self.player.apply_force([math.cos(player_ang),math.sin(player_ang)])
-
+        self.player.apply_force([math.cos(player_ang)*scalar,math.sin(player_ang)*scalar])
 
     def update(self):
         self.clock.tick(FPS)

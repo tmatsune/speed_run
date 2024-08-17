@@ -82,7 +82,7 @@ OBJ_TILE_PATH = 'src/assets/tiles/objects/'
 '''
 
 class Tile_Map:
-    def __init__(self, app, grass_manager) -> None:
+    def __init__(self, app, grass_manager=None) -> None:
         self.app = app
         self.grass_manager = grass_manager
         self.tile_map = {}
@@ -186,6 +186,46 @@ class Tile_Map:
                 if tile[1] in hitable_tilesets:
                     return True
         return False
+    
+    def load_map_editor(self, map):
+        res_data = {}
+        unhitable_tiles = {}
+        all_layers: set = set()
+
+        path = f'{MAP_PATH}{map}.json'
+        fl = open(path, 'r')
+        map_data = json.load(fl)
+        fl.close()
+
+        for k, layers in map_data['tile_map'].items():
+            key = str_to_tuple(k)
+            res_data[key] = {}
+            unhitable_tiles[key] = {}
+            for layer, tile in layers.items():
+                if tile[0] == 'objects':
+                    print('object: ', tile)
+                else:
+                    if tile[1] == 'decor':
+                        if tile[2] == 2:
+                            tile[3] = get_image(tile[3], [CELL_SIZE*1.5, CELL_SIZE*1.5])
+                        else:
+                            tile[3] = get_image(tile[3], [CELL_SIZE, CELL_SIZE])
+                    else:
+                        tile[3] = get_image(tile[3], [CELL_SIZE, CELL_SIZE])
+                    res_data[key][int(layer)] = tile
+            for layer in res_data[key]:
+                all_layers.add(layer)
+            if len(res_data[key]) == 0:
+                del res_data[key]
+            if len(unhitable_tiles[key]) == 0:
+                del unhitable_tiles[key]
+
+        self.tile_map = res_data  # map_data['tile_map']
+        self.unhitable_tiles = unhitable_tiles
+
+        sorted_layer_list = list(all_layers)
+        sorted_layer_list.sort()
+        self.all_layers = sorted_layer_list
 
 
 # ------------------------- LEVEL EDITOR ------------------------- #

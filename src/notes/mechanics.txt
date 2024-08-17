@@ -1,3 +1,9 @@
 
 Main Idea:
     Celeste style game, with climbing, and dashing 
+
+ADD:
+    SPIKES
+    MAX Y FALL 
+    TITLE SCREEN 
+    SCORE 

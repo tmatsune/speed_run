@@ -207,7 +207,7 @@ class Tile_Editor:
                 if pg.K_0 <= e.key <= pg.K_9:
                     number_pressed = e.key - pg.K_0
                     if self.load_map_mode:
-                        self.level_editor.tile_map.load_map(number_pressed)
+                        self.level_editor.tile_map.load_map_editor(number_pressed)
                     else:
                         self.curr_map_id = number_pressed
 

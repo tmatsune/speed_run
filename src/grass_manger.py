@@ -16,7 +16,6 @@ def load_grass_images(path):
     imgs = os.listdir(path)
     imgs.sort()
     for img in imgs:
-        print(f'{path}/{img}')
         grass_images.append(get_image(f'{path}/{img}', [CELL_SIZE//2, CELL_SIZE//2]))
 
 class Grass_Manager:

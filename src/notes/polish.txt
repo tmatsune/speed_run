@@ -10,6 +10,6 @@ player:
 world:
     X lighting 
     X bg effects (stars or moving objects)
-    - foliage
+    X foliage
     - leaves
     - grass 

@@ -30,6 +30,7 @@ class Player(Entity):
         self.jumps = MAX_JUMPS
         self.squish_velocity = 0
         self.angle = 0 
+        self.paint = 100
 
     def update(self, dt):
         super().update(dt)
@@ -55,7 +56,7 @@ class Player(Entity):
 
         self.apply_force([speed_x * self.speed * self.force_scalar, 0])
         self.add_friction()
-        self.vel[1] = min(14, self.vel[1]+1)
+        self.vel[1] = min(10, self.vel[1]+1)
 
         if self.force_scalar > 1:
             self.force_scalar -= FORCE_SCALAR_DECAY
@@ -120,10 +121,10 @@ class Player(Entity):
     def apply_force(self, force):
         self.vel[0] += force[0]
         self.vel[1] += force[1]
-        if self.vel[0] > 4.5: self.vel[0] = min(4.5, self.vel[0])
-        if self.vel[0] < -4.5: self.vel[0] = max(-4.5, self.vel[0])
+        if self.vel[0] > 4: self.vel[0] = min(4, self.vel[0])
+        if self.vel[0] < -4: self.vel[0] = max(-4, self.vel[0])
         
-        if self.vel[1] < -6: self.vel[1] = max(-6, self.vel[1])
+        if self.vel[1] < -4: self.vel[1] = max(-4, self.vel[1])
 
     def jump(self):
         if self.jumps > 0:
