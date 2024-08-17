@@ -16,6 +16,8 @@ class Player(Entity):
         # ---- CONST ---- #
         self.speed = 3.4
         self.image_base_dimensions = [CELL_SIZE, CELL_SIZE]
+
+        self.mask = pg.mask.from_surface(self.anim.image())
         
         # ---- VARS ---- # 
 
@@ -107,8 +109,7 @@ class Player(Entity):
         if self.state == 'hurt':
             if math.sin(self.data.total_time) > 0:
                 sil = silhouette(img)
-                surf.blit(
-                    sil, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
+                surf.blit(sil, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
                 
     def add_friction(self):
         if self.vel[0] > 0:

@@ -86,6 +86,7 @@ class Tile_Map:
         self.app = app
         self.grass_manager = grass_manager
         self.tile_map = {}
+        self.objects = {}
         self.unhitable_tiles = {}
         self.enemies = []
         self.background_objects = []
@@ -99,8 +100,9 @@ class Tile_Map:
                     for layer, data in self.tile_map[pos].items():
                         surf.blit(data[3], ((int(pos[0]) * CELL_SIZE) - offset[0], (int(pos[1]) * CELL_SIZE) - offset[1]))
 
-    def get_visible_tiles(self, offset):
+    def get_visible_tiles(self, surf, offset):
         layers = {l: [] for l in self.all_layers}
+        objects = []
         for c in range(int(0 + offset[0] // CELL_SIZE) - 1, int((COLS*CELL_SIZE + offset[0]) // CELL_SIZE) + 2):
             for r in range(int(0 + offset[1] // CELL_SIZE) - 1, int((ROWS*CELL_SIZE + offset[1]) // CELL_SIZE) + 2):
                 pos = (c, r)
@@ -108,12 +110,16 @@ class Tile_Map:
                     for layer, data in self.tile_map[pos].items():
                         tile_data = [pos] + data
                         layers[layer].append(tile_data)
-        return layers
+                if pos in self.objects:
+                    data = self.objects[pos]
+                    tile = [pos] + data
+                    objects.append(tile)
+        return layers, objects
 
     def load_map(self, map):
         res_data = {}
         unhitable_tiles = {}
-        enemies = []
+        objects = {}
         all_layers: set = set()
 
         path = f'{MAP_PATH}{map}.json'
@@ -148,14 +154,21 @@ class Tile_Map:
             if len(unhitable_tiles[key]) == 0:
                 del unhitable_tiles[key]
 
-        self.tile_map = res_data  # map_data['tile_map']
+        if (len(map_data) > 2):
+            for k, obj in map_data['objects'].items():
+                key = str_to_tuple(k)
+                obj[3] = get_image(obj[3], [CELL_SIZE, CELL_SIZE])
+                if obj[1] in ['spikes_0']:
+                    obj.append(pg.mask.from_surface(obj[3]))
+                objects[key] = obj
+
+        self.tile_map = res_data 
+        self.objects = objects
         self.unhitable_tiles = unhitable_tiles
 
         sorted_layer_list = list(all_layers)
         sorted_layer_list.sort()
         self.all_layers = sorted_layer_list
-
-        self.enemies = enemies
 
     def get_surrounding_tiles(self, pos):
         tiles = []
@@ -165,8 +178,7 @@ class Tile_Map:
             if key in self.tile_map:
                 for layer in self.tile_map[key]:
                     if self.tile_map[key][layer][1] != 'decor' and self.tile_map[key][layer][1][:2] != 'bg':
-                        tiles.append(
-                            pg.Rect(key[0] * CELL_SIZE, key[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+                        tiles.append(pg.Rect(key[0] * CELL_SIZE, key[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE))
         return tiles
 
     def get_nearby_rects(self, pos):
@@ -190,6 +202,7 @@ class Tile_Map:
     def load_map_editor(self, map):
         res_data = {}
         unhitable_tiles = {}
+        objects = {}
         all_layers: set = set()
 
         path = f'{MAP_PATH}{map}.json'
@@ -203,7 +216,7 @@ class Tile_Map:
             unhitable_tiles[key] = {}
             for layer, tile in layers.items():
                 if tile[0] == 'objects':
-                    print('object: ', tile)
+                    pass
                 else:
                     if tile[1] == 'decor':
                         if tile[2] == 2:
@@ -220,12 +233,20 @@ class Tile_Map:
             if len(unhitable_tiles[key]) == 0:
                 del unhitable_tiles[key]
 
+
+        if (len(map_data) > 2):
+            for k, obj in map_data['objects'].items():
+                key = str_to_tuple(k)
+                obj[3] = get_image(obj[3], [CELL_SIZE, CELL_SIZE])
+                objects[key] = obj
+
         self.tile_map = res_data  # map_data['tile_map']
         self.unhitable_tiles = unhitable_tiles
 
         sorted_layer_list = list(all_layers)
         sorted_layer_list.sort()
         self.all_layers = sorted_layer_list
+        self.objects = objects
 
 
 # ------------------------- LEVEL EDITOR ------------------------- #
@@ -249,11 +270,15 @@ class Level_Editor:
                         if data[1] == 'decor':
                             img = scale_image(data[3], decor_congif_id[data[2]])
                         surf.blit(img, ((int(pos[0]) * CELL_SIZE) - offset[0], (int(pos[1]) * CELL_SIZE) - offset[1]))
-
+                if pos in self.tile_map.objects:
+                    data = self.tile_map.objects[pos]
+                    img = data[3]
+                    surf.blit(img, ((int(pos[0]) * CELL_SIZE) - offset[0], (int(pos[1]) * CELL_SIZE) - offset[1]))
     # --------- CREATING TILE MAP FUNCS -------- #
 
     def save_map(self):
         new_tile_map = {}
+        new_objects = {}
         layers_found = set()
 
         for pos, layers in self.tile_map.tile_map.items():
@@ -264,6 +289,9 @@ class Level_Editor:
             new_tile_map[tuple_to_str(pos)] = layers_copy
             for layer in layers:
                 layers_found.add(layer)
+
+        for pos, obj in self.tile_map.objects.items():
+            new_objects[tuple_to_str(pos)] = [obj[0], obj[1], obj[2], f'src/assets/tiles/objects/{obj[1]}/{obj[2]}.png' ]
                 
         layers = []
         for l in layers_found:
@@ -274,7 +302,8 @@ class Level_Editor:
         fl = open(path, 'w')
         json.dump({
             'all_layers': layers,
-            'tile_map': new_tile_map
+            'tile_map': new_tile_map,
+            'objects': new_objects
         }, fl)
         fl.close()
         for k, val in new_tile_map.items():
@@ -310,12 +339,15 @@ class Level_Editor:
     # -------- TILE EDITOR FUNCS ------- #
     def add_tile(self, pos, tile_data, layer):
         key = tuple(pos)
-        if layer not in self.layers:
-            self.layers.add(layer)
-        if key not in self.tile_map.tile_map:
-            self.tile_map.tile_map[key] = {}
+        if tile_data[0] == 'objects':
+            self.tile_map.objects[key] = tile_data
+        else:
+            if layer not in self.layers:
+                self.layers.add(layer)
+            if key not in self.tile_map.tile_map:
+                self.tile_map.tile_map[key] = {}
+                self.tile_map.tile_map[key][layer] = tile_data
             self.tile_map.tile_map[key][layer] = tile_data
-        self.tile_map.tile_map[key][layer] = tile_data
 
     def remove_tile(self, pos, layer):
         key = tuple(pos)
@@ -324,6 +356,8 @@ class Level_Editor:
                 del self.tile_map.tile_map[key][layer]
                 if len(self.tile_map.tile_map[key]) == 0:
                     del self.tile_map.tile_map[key]
+        if key in self.tile_map.objects:
+            del self.tile_map.objects[key]
 
     def auto_tile(self, starting_pos, tileset_imgs, layer):
         v = set()

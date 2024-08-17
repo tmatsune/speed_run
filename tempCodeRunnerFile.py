@@ -1,1 +1,1 @@
-pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col
+load_map

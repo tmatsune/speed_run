@@ -145,7 +145,7 @@ class App:
 
         # --------- MAIN RENDER ACTIONS ---------- #
 
-        layers = self.tile_map.get_visible_tiles(self.offset)
+        layers, objects = self.tile_map.get_visible_tiles(self.display, self.offset)
         for n, layer in layers.items():
             for tile in layer:
                 real_pos = [tile[0][0] * CELL_SIZE, tile[0][1] * CELL_SIZE]
@@ -157,9 +157,19 @@ class App:
                     tile[5].render(self.display, int(math.sin(tile[0][1] / 100 + self.total_time / 20) * 30) / 10,self.offset)
                     #tile[5].update(int(math.sin(tile[0][0] / 100 + self.total_time / 40) * 30) / 10)
                     self.display.blit(img, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]))
+                elif tile[2] == 'spikes_0':
+                    pass
                 else:
                     self.display.blit(img, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]))
-    
+        for obj in objects:
+            pos = obj[0]
+            img = obj[4]
+            real_pos = [pos[0] * CELL_SIZE, pos[1] * CELL_SIZE]
+            self.display.blit(img, (real_pos[0] - self.offset[0], real_pos[1] - self.offset[1]))
+            if mask_collision(obj[5], real_pos, self.player.mask, self.player.pos.copy()):
+                print('hit')
+
+
         # ----- PLAYER 
         self.player.update(self.dt)
         self.player.render(self.display, self.offset)
