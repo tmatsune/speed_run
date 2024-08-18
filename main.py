@@ -11,6 +11,8 @@ from src.particles import *
 from src.anim_effect import Anim_Effect
 from src.grass_manger import * 
 
+#./dist/main.app/Contents/MacOS/main
+
 false = False
 true = True
 NULL = None
