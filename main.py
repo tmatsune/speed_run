@@ -54,6 +54,7 @@ def glow(surf, pos, radius, color=False):
         elif color == 'indigo': glow_img = light_masks_yellow[radius - 1]
     surf.blit(glow_img, (pos[0], pos[1]), special_flags=BLEND_RGBA_ADD)
 
+
 class App:
     def __init__(self) -> None:
         pg.init()
@@ -87,6 +88,18 @@ class App:
         self.state = State.START
         self.level = 0
         self.transition = [350, 1, 8, 'closing']
+
+        self.sounds = {
+            'paint_shot': pg.mixer.Sound(f'{AUDIO_PATH}paint_shot.mp3'),
+            'explosion': pg.mixer.Sound(f'{AUDIO_PATH}explosion.mp3'),
+            'goal': pg.mixer.Sound(f'{AUDIO_PATH}goal.mp3'),
+        }
+        self.sounds['paint_shot'].set_volume(2)
+        self.sounds['goal'].set_volume(.4)
+
+        pg.mixer.music.load(f'{AUDIO_PATH}bg_music.mp3')
+        pg.mixer.music.play(-1)
+        pg.mixer.music.set_volume(0.35)
 
         # -------- PARTICLES 
         self.particles = []
@@ -185,7 +198,9 @@ class App:
                         self.level += 1
                         if self.level == WIN_COND:
                             self.change_state(State.WIN)
+                            self.sounds['goal'].play()
                         else:
+                            self.sounds['goal'].play()
                             self.change_state(State.TRANSIT)
                 else:
                     self.player.hit()
@@ -195,8 +210,8 @@ class App:
         self.player.render(self.display, self.offset)
         glow(light_surf, (self.player.pos[0] - self.offset[0] - 200//2, self.player.pos[1] - self.offset[1] - 200//2), 200, false)
         if self.player.pos[1] > self.edges[3]:
-            self.player.dead = true 
             self.player.hit()
+            self.player.dead = true 
         if self.player.dead:
             self.change_state(State.DEAD)
         # ------------- PARTICLES ------------ #
@@ -519,6 +534,7 @@ class App:
 
     def add_paint(self, amount, scalar):
         # [ pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col ]
+        self.sounds['paint_shot'].play()
         ang = math.atan2(self.mouse_pos[1]//2 - self.player.center()[1]-self.offset[1], self.mouse_pos[0]//2 - self.player.center()[0]+self.offset[0])
         for i in range(amount):
             # offset = random.uniform(-math.pi/6, math.pi/6)
@@ -565,14 +581,14 @@ class App:
                     self.inputs[2] = True
                     self.player.jump()
                 if e.key == pg.K_s:
-                   self.reset(3)
+                   self.reset(0)
                 if e.key == pg.K_p:
                     if self.state == State.PAUSE:
                         self.state = State.RUN
                     else:
                         self.state = State.PAUSE
                 if e.key == pg.K_r:
-                    self.reset(0)
+                    self.reset(self.level)
 
             if e.type == pg.KEYUP:
                 if e.key == pg.K_a:

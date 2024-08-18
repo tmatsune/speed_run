@@ -112,6 +112,7 @@ class Player(Entity):
 
     def hit(self):
         if not self.dead:
+            self.app.sounds['explosion'].play()
             self.dead = true   
 
             for i in range(30):

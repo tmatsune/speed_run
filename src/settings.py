@@ -32,3 +32,5 @@ TILE_PATH = f'{ASSET_PATH}tiles/'
 TILESET_PATH = f'{TILE_PATH}tileset/'
 OBJECT_PATH = f'{TILE_PATH}objects/'
 
+AUDIO_PATH = f'{ASSET_PATH}audio/'
+
