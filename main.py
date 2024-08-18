@@ -16,6 +16,7 @@ true = True
 NULL = None
 inf = float('inf')
 n_inf = float('-inf')
+WIN_COND = 4
 
 class State(Enum):
     START = 0 
@@ -23,6 +24,7 @@ class State(Enum):
     PAUSE = 2 
     DEAD = 3 
     TRANSIT = 4 
+    WIN = 5
 
 light_mask_base = load_img(f'{IMG_PATH}lights/light.png')
 light_mask_base_yellow = light_mask_base.copy()
@@ -59,6 +61,12 @@ class App:
         self.display: pg.Surface = pg.Surface((WIDTH, HEIGHT))
         self.dt: float = 0
         self.clock: pg.time = pg.time.Clock()
+
+        self.fonts = {
+            'pixel_0': 'src/assets/fonts/pixel_0.ttf',
+            '0': 'src/assets/fonts/0.ttf',
+            'pixel_2': 'data/assets/fonts/pixel_2.ttf',
+        }
         # ------ GAME VARIABLES
         self.screenshake = 0 
         self.total_time = 0 
@@ -76,8 +84,9 @@ class App:
         self.edges = [inf, n_inf, inf, n_inf]  # x, -x, y, -y
 
         # ------- GAME MAIN DATA 
-        self.state = State.RUN
-        self.level = 2
+        self.state = State.START
+        self.level = 0
+        self.transition = [350, 1, 8, 'closing']
 
         # -------- PARTICLES 
         self.particles = []
@@ -117,7 +126,7 @@ class App:
             if y < self.edges[2]:
                 self.edges[2] = y + CELL_SIZE*2
             if y > self.edges[3]:
-                self.edges[3] = y + CELL_SIZE
+                self.edges[3] = y + CELL_SIZE*1
 
     def render(self):
 
@@ -173,7 +182,11 @@ class App:
             if mask_collision(obj[5], real_pos, self.player.mask, self.player.pos.copy()):
                 if obj[2] == 'target':
                     if self.state == State.RUN:
-                        self.change_state(State.TRANSIT)
+                        self.level += 1
+                        if self.level == WIN_COND:
+                            self.change_state(State.WIN)
+                        else:
+                            self.change_state(State.TRANSIT)
                 else:
                     self.player.hit()
 
@@ -183,6 +196,7 @@ class App:
         glow(light_surf, (self.player.pos[0] - self.offset[0] - 200//2, self.player.pos[1] - self.offset[1] - 200//2), 200, false)
         if self.player.pos[1] > self.edges[3]:
             self.player.dead = true 
+            self.player.hit()
         if self.player.dead:
             self.change_state(State.DEAD)
         # ------------- PARTICLES ------------ #
@@ -194,12 +208,17 @@ class App:
             p[0][1] += p[1][1]
             color = (170,240, 250) if p[3] == 'blue' else (255, 240, 2)
             pg.draw.circle(self.display, color,
-                           (int(p[0][0] - self.offset[0]) % WIDTH, int(p[0][1] - self.offset[1]) % HEIGHT), p[2])
+                        (int(p[0][0] - self.offset[0]) % WIDTH, int(p[0][1] - self.offset[1]) % HEIGHT), p[2])
             radius = 60
             radius2 = 20
             glow(light_surf, (int(p[0][0] - self.offset[0] - radius//2) % WIDTH, int(p[0][1] - self.offset[1] - radius//2) % HEIGHT), radius, p[3])
             glow(light_surf, (int(p[0][0] - self.offset[0] - radius2//2) % WIDTH, int(p[0][1] - self.offset[1] - radius2//2) % HEIGHT), radius2, p[3])
         
+            if self.state == State.START or self.state == State.WIN:
+                if p[0][0] + radius >= WIDTH or p[0][0] - radius <= 0:
+                    p[1][0] *= -1
+                if p[0][1] + radius >= HEIGHT or p[0][1] - radius <= 0:
+                    p[1][1] *= -1
         # ------- SPARKS
         # [ pos, angle, speed, width, width_decay, speed_decay, length, length_decay, col ]
         for i, spark, in enumerate(sorted(self.sparks, reverse=true)):
@@ -219,18 +238,19 @@ class App:
                 (spark[0][0] + math.cos(spark[1] - math.pi / 2) * spark[3], spark[0][1] + math.sin(spark[1] - math.pi / 2) * spark[3]),
             ]
             points = [(p[0] - self.offset[0], p[1] - self.offset[1]) for p in points]
-            pg.draw.polygon(self.display, (247, 237, 186), points)
+            color = spark[8] if spark[8] else (247, 237, 186)
+            pg.draw.polygon(self.display, color, points)
 
         # ------- PAINT
         if self.left_clicked:
-            if self.player.paint > 0:
+            if self.player.paint > -10:
                 if self.player.paint > 80:
                     self.add_paint(4, 3)
                     self.player.paint -= 1
                 elif self.player.paint > 50:
                     self.add_paint(3, 3)
                     self.player.paint -= 1
-                elif self.player.paint > 10:
+                elif self.player.paint > 0:
                     self.add_paint(2, 2)
                     self.player.paint = max(0, self.player.paint - 1)
                 else:
@@ -256,7 +276,6 @@ class App:
                 for i in range(3):
                     color = color
                     particle = ['paint', spark[0].copy(), [random.random() * 6 - 3, random.random() * 6 - 3], color, random.randrange(2, 3), random.uniform(.02, .06), 0]
-                    #particle = ['fire', spark[0].copy(), [random.random() - .5, random.randrange(-4, -1)], (10, 0, 0), random.randrange(2, 3), random.uniform(.12, .18), 0]
                     self.circle_particles.append(particle)
                 self.paints.remove(spark)
                 continue
@@ -276,7 +295,7 @@ class App:
         # ------ CIRCLE_PARTICLES
         # [ type, pos, vel, color, size, decay, dur ]
         for p in self.circle_particles.copy():
-            if p[0] == 'paint' or p[0] == 'fire_ball':
+            if p[0] == 'paint' or p[0] == 'fire_ball' or p[0] == 'blood':
                 p[1][0] += p[2][0]
                 if self.tile_map.tile_collide(p[1]):
                     p[1][0] -= p[2][0]
@@ -320,29 +339,138 @@ class App:
                     self.display, p[3], (p[1][0] - self.offset[0], p[1][1] - self.offset[1]), p[4])
                 
         # -------- CIRCLES
+        # [pos, speed, radius, width, decay, speed_decay, color ]
         for circle in self.circles.copy():
             pg.draw.circle(self.display, circle[6],
                            (circle[0][0] - self.offset[0], circle[0][1] - self.offset[1]), int(circle[2]), int(circle[3]))
             circle[2] += circle[1]
-            circle[3] *= circle[4]
-            circle[2] -= circle[5]
+            circle[1] *= circle[5]
+            circle[3] -= circle[4]
             if circle[3] < 1:
                 self.circles.remove(circle)
+
+        # ---------- UI ---------- #
+
+        tutorial_text_0 = text_surface_1(f'LEVEL: {self.level}', 16, false, (178, 100, 255), font_path=self.fonts['pixel_0'])
+        tutorial_text_1 = text_surface_1(f'LEVEL: {self.level}', 16, false, (100, 205, 255), font_path=self.fonts['pixel_0'])
+        self.display.blit(tutorial_text_0, (10, 10))
+        self.display.blit(tutorial_text_1, (10, 12))
 
         # ------------------ STATE HANDLER ------------------- # 
         if self.state == State.RUN:
             if self.player.dead:
                 self.state = State.DEAD
             if self.level == 0:
-                pass
+                if self.player.pos[0] < 150:
+                    text = text_surface_1(f"use mouse and right CliCk to fire paint", 8, false, (178, 100, 255), font_path=self.fonts['pixel_0'])
+                    text_1 = text_surface_1(f"use mouse and right CliCk to fire paint", 8, false, (100, 205, 255), font_path=self.fonts['pixel_0'])
+                    self.display.blit(text, (SCREEN_CENTER[0]-text.get_width()//2, SCREEN_CENTER[1]))
+                    self.display.blit(text_1, (SCREEN_CENTER[0]-(text.get_width()//2)+2, SCREEN_CENTER[1]))
+                elif self.player.pos[0] < 300:
+                    text = text_surface_1(f"Reach Target to advanCe to next round", 8, false, (178, 100, 255), font_path=self.fonts['pixel_0'])
+                    text_1 = text_surface_1(f"Reach Target to advanCe to next round", 8, false, (100, 205, 255), font_path=self.fonts['pixel_0'])
+                    self.display.blit(text, (SCREEN_CENTER[0]-text.get_width()//2, SCREEN_CENTER[1]))
+                    self.display.blit(text_1, (SCREEN_CENTER[0]-(text.get_width()//2)+2, SCREEN_CENTER[1]))
+
+            pg.draw.rect(self.display, WHITE, (WIDTH-20, 10, 14, 42), 2)
+            perc = self.player.paint / 100
+            color = (14, 226, 50)
+            if perc < .35:
+                color = (220, 14, 60)
+            elif perc < .60:
+                color = (240, 230, 0)
+            pg.draw.rect(self.display, color, (WIDTH-18, 12, 10, 38 * perc))
+
         elif self.state == State.TRANSIT:
-            pass
+
+            player_center = self.player.center()
+            pg.draw.circle(self.display, BLACK, (player_center[0] - self.offset[0],
+                        player_center[1] - self.offset[1]), int(self.transition[0]), self.transition[1])
+
+            if self.transition[3] == 'closing':
+                if self.transition[1] < self.transition[0]:
+                    self.transition[1] += self.transition[2]
+                    if self.transition[1] >= self.transition[0]:
+                        self.reset(self.level)
+
+                        self.offset[0] = (
+                            (self.player.pos[0] - WIDTH // 2) - self.offset[0]) / 12
+                        self.offset[1] = (
+                            (self.player.pos[1] - HEIGHT // 2) - self.offset[1]) / 12
+
+                        if self.offset[0] < self.edges[0]:
+                            self.offset[0] = self.edges[0]
+                        if self.offset[0] + WIDTH > self.edges[1]:
+                            self.offset[0] = self.edges[1] - WIDTH
+
+                        if self.offset[1] < self.edges[2]:
+                            self.offset[1] = self.edges[2]
+                        if self.offset[1] + HEIGHT > self.edges[3]:
+                            self.offset[1] = self.edges[3] - HEIGHT
+                        self.transition = [350, 1, 4, 'closing']
+                        self.change_state(State.RUN)
+                        
+                        
+                        #self.data.transition[3] = 'opening'
+            #else:
+            #    self.data.transition[1] -= self.data.transition[2]
+            #    if self.data.transition[1] < 0:
+            #        self.data.transition = [350, 1, 4, 'closing']
+            #        self.data.e_handler.change_state(State.GAME_ON)
+
         elif self.state == State.DEAD:
-            print('dead')
+            tutorial_text_0 = text_surface_1(f'GAME OVER', 28, false, (178, 100, 255), font_path=self.fonts['pixel_0'])
+            tutorial_text_1 = text_surface_1(f'GAME OVER', 28, false, (100, 205, 255), font_path=self.fonts['pixel_0'])
+            text_surf = pg.Surface((tutorial_text_0.get_width() + 4, tutorial_text_0.get_height()+10))
+            text_surf.set_colorkey((0, 0, 0))
+            text_surf.blit(tutorial_text_0, (0,0))
+            text_surf.blit(tutorial_text_1, (0, 4))
+            self.display.blit(text_surf, (SCREEN_CENTER[0]-text_surf.get_width()//2, SCREEN_CENTER[1]-text_surf.get_height()))
+
+            reset_text = text_surface_1(f"press 'r' to reset game", 10, false, (178, 100, 255), font_path=self.fonts['pixel_0'])
+            reset_text_1 = text_surface_1(f"press 'r' to reset game", 10, false, (100, 205, 255), font_path=self.fonts['pixel_0'])
+            reset_text_flash = text_surface_1(f"press 'r' to reset game", 10, false, (255, 255, 255), font_path=self.fonts['pixel_0'])
+            self.display.blit(reset_text, (SCREEN_CENTER[0]-reset_text.get_width()//2, SCREEN_CENTER[1]))
+            self.display.blit(reset_text_1, (SCREEN_CENTER[0]-(reset_text.get_width()//2)+2, SCREEN_CENTER[1]))
+            if math.sin(self.total_time) > 0:
+                self.display.blit(reset_text_flash, (SCREEN_CENTER[0]-(reset_text.get_width()//2)+2, SCREEN_CENTER[1]))
+
         elif self.state == State.PAUSE:
             pass
         elif self.state == State.START:
-            pass
+            pg.draw.rect(self.display, (0, 30, 80), (0, 0, WIDTH, HEIGHT))
+            tutorial_text_0 = text_surface_1(f'PAINT RUN', 28, false, (178, 100, 255), font_path=self.fonts['pixel_0'])
+            tutorial_text_1 = text_surface_1(f'PAINT RUN', 28, false, (100, 205, 255), font_path=self.fonts['pixel_0'])
+            text_surf = pg.Surface((tutorial_text_0.get_width() + 4, tutorial_text_0.get_height()+10))
+            text_surf.set_colorkey((0, 0, 0))
+            text_surf.blit(tutorial_text_0, (0,0))
+            text_surf.blit(tutorial_text_1, (0, 4))
+            self.display.blit(text_surf, (SCREEN_CENTER[0]-text_surf.get_width()//2, SCREEN_CENTER[1]-text_surf.get_height()))
+
+            reset_text = text_surface_1(f"press 's' to start", 10, false, (178, 100, 255), font_path=self.fonts['pixel_0'])
+            reset_text_1 = text_surface_1(f"press 's' to start", 10, false, (100, 205, 255), font_path=self.fonts['pixel_0'])
+            reset_text_flash = text_surface_1(f"press 's' to start", 10, false, (255, 255, 255), font_path=self.fonts['pixel_0'])
+            self.display.blit(reset_text, (SCREEN_CENTER[0]-reset_text.get_width()//2, SCREEN_CENTER[1]))
+            self.display.blit(reset_text_1, (SCREEN_CENTER[0]-(reset_text.get_width()//2)+2, SCREEN_CENTER[1]))
+            if math.sin(self.total_time) > .2:
+                self.display.blit(reset_text_flash, (SCREEN_CENTER[0]-(reset_text.get_width()//2)+2, SCREEN_CENTER[1]))
+        elif self.state == State.WIN:
+            pg.draw.rect(self.display, (0, 30, 80),(0, 0, WIDTH, HEIGHT))
+            tutorial_text_0 = text_surface_1(f'YOU WIN!', 28, false, (178, 100, 255), font_path=self.fonts['pixel_0'])
+            tutorial_text_1 = text_surface_1(f'YOU WIN!', 28, false, (100, 205, 255), font_path=self.fonts['pixel_0'])
+            text_surf = pg.Surface((tutorial_text_0.get_width() + 4, tutorial_text_0.get_height()+10))
+            text_surf.set_colorkey((0, 0, 0))
+            text_surf.blit(tutorial_text_0, (0,0))
+            text_surf.blit(tutorial_text_1, (0, 4))
+            self.display.blit(text_surf, (SCREEN_CENTER[0]-text_surf.get_width()//2, SCREEN_CENTER[1]-text_surf.get_height()))
+
+            reset_text = text_surface_1(f"press 'r' to reset game", 10, false, (178, 100, 255), font_path=self.fonts['pixel_0'])
+            reset_text_1 = text_surface_1(f"press 'r' to reset game", 10, false, (100, 205, 255), font_path=self.fonts['pixel_0'])
+            reset_text_flash = text_surface_1(f"press 'r' to reset game", 10, false, (255, 255, 255), font_path=self.fonts['pixel_0'])
+            self.display.blit(reset_text, (SCREEN_CENTER[0]-reset_text.get_width()//2, SCREEN_CENTER[1]))
+            self.display.blit(reset_text_1, (SCREEN_CENTER[0]-(reset_text.get_width()//2)+2, SCREEN_CENTER[1]))
+            if math.sin(self.total_time) > .2:
+                self.display.blit(reset_text_flash, (SCREEN_CENTER[0]-(reset_text.get_width()//2)+2, SCREEN_CENTER[1]))
         else:
             assert 0, f'ERROR STATE NOT FOUND {self.state}'
 
@@ -407,6 +535,12 @@ class App:
         player_ang = math.atan2((self.player.center()[1]-self.offset[1]) - self.mouse_pos[1]//2, (self.player.center()[0]-self.offset[0]) - self.mouse_pos[0]//2)
         self.player.apply_force([math.cos(player_ang)*scalar,math.sin(player_ang)*scalar])
 
+    def reset(self, level):
+        self.level = level
+        self.load_map(self.level)
+        self.player.dead = false
+        self.change_state(State.RUN)
+
     def update(self):
         self.clock.tick(FPS)
         pg.display.set_caption(f'{self.clock.get_fps()}')
@@ -431,12 +565,14 @@ class App:
                     self.inputs[2] = True
                     self.player.jump()
                 if e.key == pg.K_s:
-                    pass
+                   self.reset(3)
                 if e.key == pg.K_p:
                     if self.state == State.PAUSE:
                         self.state = State.RUN
                     else:
                         self.state = State.PAUSE
+                if e.key == pg.K_r:
+                    self.reset(0)
 
             if e.type == pg.KEYUP:
                 if e.key == pg.K_a:

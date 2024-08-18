@@ -1,8 +1,8 @@
 import pygame as pg 
 import math, random
 from .entity import Entity 
-from .utils import silhouette
-from .settings import CELL_SIZE
+from .utils import silhouette, get_image
+from .settings import CELL_SIZE, IMG_PATH
 
 false = False
 true = True
@@ -36,6 +36,7 @@ class Player(Entity):
         self.paint = 100
         self.hurt_timer = HURT_TIME
         self.dead = false 
+        self.gun_img = get_image(IMG_PATH + 'objs/gun.png', [8,8])
 
     def update(self, dt):
         super().update(dt)
@@ -98,6 +99,10 @@ class Player(Entity):
 
         if not self.dead:
             surf.blit(img, (self.pos[0] - offset[0], self.pos[1] - offset[1]))
+            gun_pos = self.center()
+            ang = math.atan2(self.app.mouse_pos[0]//2 - self.center()[0]+offset[0], self.app.mouse_pos[1]//2 - self.center()[1]+offset[1])
+            gun_img = pg.transform.rotate(self.gun_img, math.degrees(ang)-90)
+            surf.blit(gun_img, (gun_pos[0] - offset[0] - 4, gun_pos[1] - offset[1] - 4))
 
         self.mask = pg.mask.from_surface(img)
         if self.state == 'hurt':
@@ -107,8 +112,30 @@ class Player(Entity):
 
     def hit(self):
         if not self.dead:
-            self.dead = true 
-                
+            self.dead = true   
+
+            for i in range(30):
+                color = random.choice([(37, 255, 60), (37, 120, 250), (255, 37, 80), (250, 250, 50), (150, 50, 250)])
+                particle = ['paint', self.center(), [random.random() * 6 - 3, random.random() * 6 - 3], color, random.randrange(2, 3), random.uniform(.02, .06), 0]
+                self.app.circle_particles.append(particle)
+            self.app.circles.append([self.center(), 6, 1, 6, 0.15, 0.9, (247, 237, 186)])
+            for i in range(30):
+                ang = random.uniform(-math.pi, math.pi)
+                spark = [self.center(), ang, random.randrange(7, 10), random.randrange(4, 6), random.uniform(.20, .24), 0.9, random.randrange(14, 18), random.uniform(.92, .98), 
+                         random.choice([(37, 255, 60), (37, 120, 250), (255, 37, 80), (250, 250, 50), (150, 50, 250)])]
+                self.app.sparks.append(spark)
+            '''
+            for i in range(18):
+                angle = random.uniform(-3.14, 3.14)
+                speed = random.randrange(1, 2)
+                particle = ['fire_ball', self.center(), [math.cos(angle) * speed, math.sin(angle) * speed], (245, 237, 186), random.randrange(2, 3), .04, 0]
+                self.app.circle_particles.append(particle)
+            for i in range(30):
+                pos = self.center()
+                fire = ['fire', [pos[0] + random.randrange(-2,2), pos[1] + random.randrange(10,20)], [random.uniform(-.5,.5), random.uniform(-1.2, -.5)], (10, 0, 0), random.randrange(3, 6), random.uniform(.12, .16), 0]
+                self.app.circle_particles.append(fire)
+            '''
+
     def add_friction(self):
         if self.vel[0] > 0:
             self.vel[0] -= .4
